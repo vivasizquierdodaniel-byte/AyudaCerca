@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AyudaCerca</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<style>
+body{font-family:Arial;margin:0;background:#f4f6f8}
+header{background:#2c7be5;color:white;padding:20px;text-align:center}
+.container{max-width:1000px;margin:auto;padding:20px}
+.card{background:white;padding:15px;margin:10px 0;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,0.1)}
+input,textarea,select{width:100%;padding:10px;margin-top:5px;margin-bottom:10px;border-radius:6px;border:1px solid #ccc}
+button{background:#2c7be5;color:white;border:none;padding:10px 15px;border-radius:6px;cursor:pointer}
+button:hover{background:#1a5dc9}
+#map{height:400px;border-radius:10px;margin-top:10px}
+.badge{padding:4px 8px;border-radius:6px;color:white;font-size:12px}
+.ofrezco{background:#28a745}
+.necesito{background:#dc3545}
+</style>
+</head>
+
+<body>
+
+<header>
+<h1>🤝 AyudaCerca</h1>
+<p>Conecta con personas que ofrecen o necesitan ayuda en tu zona</p>
+</header>
+
+<div class="container">
+
+<div class="card">
+<h2>Publicar ayuda</h2>
+
+<select id="tipo">
+<option value="ofrezco">Ofrezco ayuda</option>
+<option value="necesito">Necesito ayuda</option>
+</select>
+
+<input type="text" id="titulo" placeholder="Título"/>
+<textarea id="descripcion" placeholder="Describe la ayuda"></textarea>
+
+<button onclick="usarUbicacion()">Usar mi ubicación</button>
+<button onclick="publicar()">Publicar</button>
+
+<p id="estado"></p>
+</div>
+
+<div class="card">
+<h2>Mapa de ayudas</h2>
+<div id="map"></div>
+</div>
+
+<div class="card">
+<h2>Publicaciones</h2>
+<div id="lista"></div>
+</div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+let map = L.map('map').setView([40.4168,-3.7038],6);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+maxZoom:19
+}).addTo(map);
+
+let publicaciones = JSON.parse(localStorage.getItem('ayudaCercaPosts')) || [];
+let ubicacionActual = null;
+
+function usarUbicacion(){
+if(!navigator.geolocation){
+document.getElementById("estado").innerText="Geolocalización no disponible";
+return;
+}
+
+navigator.geolocation.getCurrentPosition(pos=>{
+ubicacionActual=[pos.coords.latitude,pos.coords.longitude];
+map.setView(ubicacionActual,13);
+document.getElementById("estado").innerText="Ubicación obtenida";
+});
+}
+
+function publicar(){
+let tipo=document.getElementById("tipo").value;
+let titulo=document.getElementById("titulo").value;
+let descripcion=document.getElementById("descripcion").value;
+
+if(!titulo||!descripcion||!ubicacionActual){
+alert("Completa todo y usa tu ubicación");
+return;
+}
+
+let post={tipo,titulo,descripcion,lat:ubicacionActual[0],lng:ubicacionActual[1],fecha:new Date().toLocaleString()};
+
+publicaciones.push(post);
+localStorage.setItem('ayudaCercaPosts',JSON.stringify(publicaciones));
+
+mostrar();
+
+}
+
+function mostrar(){
+
+let lista=document.getElementById("lista");
+lista.innerHTML="";
+
+map.eachLayer(layer=>{
+if(layer instanceof L.Marker) map.removeLayer(layer);
+});
+
+publicaciones.forEach(p=>{
+
+let div=document.createElement("div");
+div.className="card";
+
+let clase=p.tipo==="ofrezco"?"ofrezco":"necesito";
+let texto=p.tipo==="ofrezco"?"Ofrece ayuda":"Necesita ayuda";
+
+ div.innerHTML=`
+ <span class="badge ${clase}">${texto}</span>
+ <h3>${p.titulo}</h3>
+ <p>${p.descripcion}</p>
+ <small>${p.fecha}</small>
+ `;
+
+lista.appendChild(div);
+
+let marker=L.marker([p.lat,p.lng]).addTo(map);
+marker.bindPopup(`<b>${p.titulo}</b><br>${p.descripcion}`);
+
+});
+
+}
+
+mostrar();
+
+</script>
+
+</body>
+</html>
